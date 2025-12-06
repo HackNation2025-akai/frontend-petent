@@ -4,9 +4,19 @@ type SectionProps = {
   title: string;
   description?: string;
   children?: ReactNode;
+  onValidateClick?: () => void;
+  validateLabel?: string;
+  validating?: boolean;
 };
 
-export default function Section({ title, description, children }: SectionProps) {
+export default function Section({
+  title,
+  description,
+  children,
+  onValidateClick,
+  validateLabel,
+  validating,
+}: SectionProps) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-col gap-2 px-6 py-5">
@@ -18,6 +28,16 @@ export default function Section({ title, description, children }: SectionProps) 
             <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
           </div>
           <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
+          {onValidateClick ? (
+            <button
+              type="button"
+              onClick={onValidateClick}
+              disabled={validating}
+              className="btn btn-ghost text-sm font-semibold text-emerald-700 hover:text-emerald-800 disabled:opacity-60"
+            >
+              {validateLabel ?? "Waliduj LLM"}
+            </button>
+          ) : null}
         </div>
         {description ? <p className="text-sm text-slate-600">{description}</p> : null}
       </div>
