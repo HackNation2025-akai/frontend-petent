@@ -1,5 +1,5 @@
-import type { FieldConfig, FieldName, FormValues } from "@/types/form";
-import type { FormInstance } from "@/types/formInstance";
+import type { FieldConfig, FieldName, FormValues } from "../types/form";
+import type { FormInstance } from "../types/form-instance";
 
 type Props = FieldConfig & {
   form: FormInstance;
@@ -29,7 +29,7 @@ export function TextField({
             type={type}
             placeholder={placeholder}
             value={(field.state.value as string) ?? ""}
-            onChange={(event) => field.setValue(event.target.value)}
+            onChange={(event) => field.setValue(event.target.value as FormValues[keyof FormValues])}
           />
         </div>
       )}

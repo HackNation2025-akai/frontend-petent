@@ -1,18 +1,20 @@
+import type { FormEvent } from "react";
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import Section from "./Section";
-import type { FormValues } from "@/types/form";
-import type { FormInstance } from "@/types/formInstance";
-import PersonalSection from "./sections/PersonalSection";
-import ResidenceSection from "./sections/ResidenceSection";
-import LastResidenceSection from "./sections/LastResidenceSection";
-import CorrespondenceSection from "./sections/CorrespondenceSection";
-import AccidentSection from "./sections/AccidentSection";
-import { summaryRows } from "@/types/formConfigs";
+
+import Section from "../components/Section";
+import PersonalSection from "../components/sections/PersonalSection";
+import ResidenceSection from "../components/sections/ResidenceSection";
+import LastResidenceSection from "../components/sections/LastResidenceSection";
+import CorrespondenceSection from "../components/sections/CorrespondenceSection";
+import AccidentSection from "../components/sections/AccidentSection";
+import { summaryRows } from "../types/form.config";
+import type { FormValues } from "../types/form";
+import type { FormInstance } from "../types/form-instance";
 
 type Step = "basic" | "accident" | "summary";
 
-export default function Form() {
+export default function PetentFormPage() {
   const [step, setStep] = useState<Step>("basic");
   const [abroad, setAbroad] = useState<boolean>(false);
 
@@ -68,7 +70,7 @@ export default function Form() {
         machineRegistered: false,
       },
     } satisfies FormValues,
-    onSubmit: ({ value }) => {
+    onSubmit: ({ value }: { value: FormValues }) => {
       console.log("Podsumowanie formularza:", value);
     },
   });
@@ -77,11 +79,11 @@ export default function Form() {
     step === "basic" ? "1 / 3" : step === "accident" ? "2 / 3" : "3 / 3";
 
   const handleNext = () => {
-    setStep((prev) => (prev === "basic" ? "accident" : "summary"));
+    setStep((prev: Step) => (prev === "basic" ? "accident" : "summary"));
   };
 
   const handlePrev = () => {
-    setStep((prev) => (prev === "summary" ? "accident" : "basic"));
+    setStep((prev: Step) => (prev === "summary" ? "accident" : "basic"));
   };
 
   return (
@@ -115,7 +117,7 @@ export default function Form() {
 
         <form
           className="mt-8 space-y-6"
-          onSubmit={(event) => {
+          onSubmit={(event: FormEvent<HTMLFormElement>) => {
             event.preventDefault();
             event.stopPropagation();
             form.handleSubmit();
@@ -212,3 +214,4 @@ export default function Form() {
     </main>
   );
 }
+

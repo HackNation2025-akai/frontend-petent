@@ -1,8 +1,7 @@
 import Section from "../Section";
-import type { FormValues } from "@/types/form";
-import { residenceFields } from "@/types/form";
-import type { FormInstance } from "@/types/formInstance";
-import { TextField } from "./TextField";
+import { residenceFields } from "../../types/form.config";
+import type { FormInstance } from "../../types/form-instance";
+import { TextField } from "../TextField";
 
 type Props = {
   form: FormInstance;
