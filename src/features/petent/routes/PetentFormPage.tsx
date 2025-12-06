@@ -19,65 +19,74 @@ import { clearFormDraft, loadFormDraft, saveFormDraft } from "../hooks/useFormDr
 type Step = "basic" | "accident" | "summary";
 
 export default function PetentFormPage() {
+  const initialValues: FormValues = {
+    pesel: "",
+    docType: "",
+    docNumber: "",
+    firstName: "",
+    lastName: "",
+    birthDate: "",
+    birthPlace: "",
+    phone: "",
+    residence: {
+      street: "",
+      houseNumber: "",
+      apartmentNumber: "",
+      postalCode: "",
+      city: "",
+      country: "Polska",
+      abroad: false,
+    },
+    lastResidence: {
+      street: "",
+      houseNumber: "",
+      apartmentNumber: "",
+      postalCode: "",
+      city: "",
+    },
+    correspondence: {
+      street: "",
+      houseNumber: "",
+      apartmentNumber: "",
+      postalCode: "",
+      city: "",
+      country: "Polska",
+      mode: "adres",
+      onBehalf: false,
+    },
+    accident: {
+      date: "",
+      place: "",
+      plannedHoursStart: "",
+      plannedHoursEnd: "",
+      injuryTypes: "",
+      accidentDetails: "",
+      authority: "",
+      firstAid: false,
+      medicalFacility: "",
+      machineRelated: false,
+      machineUsageDetails: "",
+      machineCertified: false,
+      machineRegistered: false,
+    },
+  };
+  const draftFromStorage =
+    typeof window !== "undefined" ? loadFormDraft() : null;
+
   const [step, setStep] = useState<Step>("basic");
-  const [abroad, setAbroad] = useState<boolean>(false);
+  const [abroad, setAbroad] = useState<boolean>(
+    draftFromStorage?.residence.abroad ?? false,
+  );
   const [formErrors, setFormErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showDraftModal, setShowDraftModal] = useState<boolean>(
+    Boolean(draftFromStorage),
+  );
+  const [draftData, setDraftData] = useState<FormValues | null>(draftFromStorage);
   const { addToast } = useToast();
-  const draft = typeof window !== "undefined" ? loadFormDraft() : null;
 
   const form: FormInstance = useForm({
-    defaultValues: draft ?? {
-      pesel: "",
-      docType: "",
-      docNumber: "",
-      firstName: "",
-      lastName: "",
-      birthDate: "",
-      birthPlace: "",
-      phone: "",
-      residence: {
-        street: "",
-        houseNumber: "",
-        apartmentNumber: "",
-        postalCode: "",
-        city: "",
-        country: "Polska",
-        abroad: false,
-      },
-      lastResidence: {
-        street: "",
-        houseNumber: "",
-        apartmentNumber: "",
-        postalCode: "",
-        city: "",
-      },
-      correspondence: {
-        street: "",
-        houseNumber: "",
-        apartmentNumber: "",
-        postalCode: "",
-        city: "",
-        country: "Polska",
-        mode: "adres",
-        onBehalf: false,
-      },
-      accident: {
-        date: "",
-        place: "",
-        plannedHoursStart: "",
-        plannedHoursEnd: "",
-        injuryTypes: "",
-        accidentDetails: "",
-        authority: "",
-        firstAid: false,
-        medicalFacility: "",
-        machineRelated: false,
-        machineUsageDetails: "",
-        machineCertified: false,
-        machineRegistered: false,
-      },
-    } satisfies FormValues,
+    defaultValues: draftFromStorage ?? initialValues,
     onSubmit: ({ value }: { value: FormValues }) => {
       logger.info("Podsumowanie formularza:", value);
       saveFormDraft(value);
@@ -100,10 +109,36 @@ export default function PetentFormPage() {
     event?.preventDefault();
     event?.stopPropagation();
 
-    const validation = validateFormValues(form.state.values as FormValues);
+    const validation = validateFormValues(form.state.values as FormValues, step);
     if (!validation.success) {
       setFormErrors(validation.errors);
-      addToast({ message: "Sprawdź wymagane pola formularza", type: "error" });
+      const firstErrorKey = Object.keys(validation.errors)[0];
+      const firstErrorMessage = firstErrorKey ? validation.errors[firstErrorKey as FieldName] : null;
+
+      // W krokach pośrednich pozwalamy przejść dalej mimo błędów, ale pokazujemy komunikat
+      addToast({
+        message: firstErrorMessage
+          ? `Uzupełnij później: ${firstErrorMessage}`
+          : "Możesz przejść dalej, ale uzupełnij brakujące pola przed wysłaniem",
+        type: "info",
+      });
+
+      if (step !== "summary") {
+        setIsSubmitting(true);
+        try {
+          handleNext();
+          saveFormDraft(form.state.values as FormValues);
+        } finally {
+          setIsSubmitting(false);
+        }
+        return;
+      }
+
+      // W podsumowaniu blokujemy wysłanie/druk
+      addToast({
+        message: "Uzupełnij wymagane pola przed zakończeniem",
+        type: "error",
+      });
       return;
     }
 
@@ -113,7 +148,7 @@ export default function PetentFormPage() {
     try {
       if (step !== "summary") {
         handleNext();
-        addToast({ message: "Zapisano krok formularza", type: "success" });
+        addToast({ message: "Przechodzisz dalej — szkic zapisany", type: "success" });
         saveFormDraft(form.state.values as FormValues);
         return;
       }
@@ -130,9 +165,73 @@ export default function PetentFormPage() {
     addToast({ message: "Szkic zapisany lokalnie", type: "success" });
   };
 
+  const handleValidatedSubmitClick = () => {
+    handleValidatedSubmit();
+  };
+
+  const handleStartOver = () => {
+    clearFormDraft();
+    setDraftData(null);
+    form.reset(initialValues);
+    setAbroad(initialValues.residence.abroad);
+    setStep("basic");
+    setShowDraftModal(false);
+    addToast({ message: "Rozpoczęto nowy formularz", type: "info" });
+  };
+
+  const handleContinueDraft = () => {
+    if (draftData) {
+      form.reset(draftData);
+      setAbroad(draftData.residence.abroad ?? false);
+    }
+    setShowDraftModal(false);
+  };
+
+  const handleCloseDraftModal = () => {
+    setShowDraftModal(false);
+  };
+
+  const summaryValidation = validateFormValues(form.state.values as FormValues, "summary");
+  const isSummaryValid = summaryValidation.success;
+
   return (
     <main className="min-h-screen bg-slate-50 py-10">
       <div className="mx-auto max-w-6xl px-4 lg:px-0">
+        {showDraftModal ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4"
+            onClick={handleCloseDraftModal}
+          >
+            <div
+              className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-2">
+                Znaleziono zapisany szkic
+              </h2>
+              <p className="text-sm text-slate-700 mb-6">
+                Czy chcesz kontynuować wypełnienie, czy zacząć od nowa?
+              </p>
+              <div className="flex flex-wrap gap-3 justify-end">
+                <button
+                  type="button"
+                  className="btn btn-ghost shadow-sm"
+                  onClick={handleStartOver}
+                >
+                  Zacznij od nowa
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary shadow-sm"
+                  onClick={handleContinueDraft}
+                >
+                  Kontynuuj
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <header className="flex flex-col gap-3 rounded-xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-200">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
@@ -201,14 +300,16 @@ export default function PetentFormPage() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    className="btn btn-ghost shadow-sm"
+                    className="btn btn-ghost shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!isSummaryValid}
                     onClick={() => logger.info("Stub drukowania – w przygotowaniu")}
                   >
                     Drukuj (wkrótce)
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost shadow-sm"
+                    className="btn btn-ghost shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!isSummaryValid}
                     onClick={() => logger.info("Stub wysyłki – w przygotowaniu")}
                   >
                     Wyślij (wkrótce)
@@ -234,7 +335,7 @@ export default function PetentFormPage() {
             {step !== "summary" ? (
               <button
                 type="button"
-                  onClick={handleValidatedSubmit}
+                  onClick={handleValidatedSubmitClick}
                   disabled={isSubmitting}
                   className="btn btn-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
               >

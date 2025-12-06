@@ -17,7 +17,33 @@ const addressWithCountrySchema = addressSchema.extend({
   country: z.string().min(2, "Podaj nazwę państwa"),
 });
 
-export const formSchema = z.object({
+// Luźniejsza wersja adresu – pozwala na puste pola, walidacja warunkowa w superRefine
+const addressLooseSchema = z.object({
+  street: z.string().optional(),
+  houseNumber: z.string().optional(),
+  apartmentNumber: z.string().optional(),
+  postalCode: z.string().optional(),
+  city: z.string().optional(),
+});
+
+const accidentSchema = z.object({
+  date: z.string().min(4, "Data wypadku jest wymagana"),
+  place: z.string().min(2, "Podaj miejsce wypadku"),
+  plannedHoursStart: z.string().optional().default(""),
+  plannedHoursEnd: z.string().optional().default(""),
+  injuryTypes: z.string().min(2, "Opisz rodzaj urazów"),
+  accidentDetails: z.string().min(4, "Dodaj opis okoliczności"),
+  authority: z.string().optional().default(""),
+  firstAid: z.boolean(),
+  medicalFacility: z.string().optional().default(""),
+  machineRelated: z.boolean(),
+  machineUsageDetails: z.string().optional().default(""),
+  machineCertified: z.boolean(),
+  machineRegistered: z.boolean(),
+});
+
+// Bazowy schemat bez refinements, na jego podstawie tworzymy odmiany
+const baseSchema = z.object({
   pesel: z.string().regex(peselRegex, "PESEL powinien mieć 11 cyfr"),
   docType: z.enum(["id_card", "passport", "other", ""], {
     required_error: "Wybierz rodzaj dokumentu",
@@ -26,35 +52,46 @@ export const formSchema = z.object({
   firstName: z.string().min(2, "Imię jest wymagane"),
   lastName: z.string().min(2, "Nazwisko jest wymagane"),
   birthDate: z.string().min(4, "Data urodzenia jest wymagana"),
-  birthPlace: z.string().min(2, "Miejsce urodzenia jest wymagane"),
+  birthPlace: z.string().min(2, "Miejsce urodzenia jest wymagana"),
   phone: z.string().regex(phoneRegex, "Telefon powinien mieć 7-15 cyfr"),
   residence: addressWithCountrySchema.extend({
     abroad: z.boolean(),
   }),
-  lastResidence: addressSchema,
+  lastResidence: addressLooseSchema,
   correspondence: addressWithCountrySchema.extend({
     mode: z.enum(["adres", "poste_restante", "skrytka_pocztowa", "przegrodka_pocztowa"]),
     onBehalf: z.boolean(),
   }),
-  accident: z.object({
-    date: z.string().min(4, "Data wypadku jest wymagana"),
-    place: z.string().min(2, "Podaj miejsce wypadku"),
-    plannedHoursStart: z.string().optional().default(""),
-    plannedHoursEnd: z.string().optional().default(""),
-    injuryTypes: z.string().min(2, "Opisz rodzaj urazów"),
-    accidentDetails: z.string().min(4, "Dodaj opis okoliczności"),
-    authority: z.string().optional().default(""),
-    firstAid: z.boolean(),
-    medicalFacility: z.string().optional().default(""),
-    machineRelated: z.boolean(),
-    machineUsageDetails: z.string().optional().default(""),
-    machineCertified: z.boolean(),
-    machineRegistered: z.boolean(),
-  }),
+  accident: accidentSchema,
 });
 
-export const validateFormValues = (value: FormValues) => {
-  const result = formSchema.safeParse(value);
+// Pełna walidacja (z warunkowym wymaganiem lastResidence)
+export const formSchema = baseSchema.superRefine((data, ctx) => {
+  // Wymagaj "Adres ostatniego miejsca zamieszkania w Polsce" tylko gdy abroad=true
+  if (data.residence.abroad) {
+    const check = addressSchema.safeParse(data.lastResidence);
+    if (!check.success) {
+      for (const issue of check.error.issues) {
+        ctx.addIssue({
+          code: issue.code,
+          message: issue.message,
+          path: ["lastResidence", ...(issue.path ?? [])],
+        });
+      }
+    }
+  }
+});
+
+// Walidacja kroku 1: pomijamy sekcję wypadku
+const basicSchema = baseSchema.extend({
+  accident: z.any(),
+});
+
+type StepKey = "basic" | "accident" | "summary";
+
+export const validateFormValues = (value: FormValues, step: StepKey = "basic") => {
+  const schemaToUse = step === "basic" ? basicSchema : formSchema;
+  const result = schemaToUse.safeParse(value);
 
   if (result.success) {
     return { success: true as const, errors: {} as Record<FieldName, string> };

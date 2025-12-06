@@ -17,8 +17,23 @@ export const useToast = () => {
 export function ToastProvider({ children }: PropsWithChildren) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const generateId = () => {
+    if (typeof globalThis !== "undefined") {
+      const cryptoApi = (globalThis as typeof globalThis & { crypto?: Crypto }).crypto;
+      if (cryptoApi?.randomUUID) return cryptoApi.randomUUID();
+      if (cryptoApi?.getRandomValues) {
+        const buf = new Uint32Array(4);
+        cryptoApi.getRandomValues(buf);
+        return Array.from(buf)
+          .map((n) => n.toString(16).padStart(8, "0"))
+          .join("-");
+      }
+    }
+    return Math.random().toString(36).slice(2, 10);
+  };
+
   const addToast = (toast: Omit<Toast, "id">) => {
-    const id = crypto.randomUUID();
+    const id = generateId();
     const nextToast: Toast = { id, ...toast };
     setToasts((prev) => [...prev, nextToast]);
     setTimeout(() => {

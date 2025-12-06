@@ -86,12 +86,14 @@ export default function AccidentSection({ form, errors }: Props) {
             name={"accident.injuryTypes" as FieldName}
             label="Rodzaj doznanych urazów"
             colSpan="col-span-12 md:col-span-4"
+          error={errors["accident.injuryTypes"]}
           />
           <TextField
             form={form}
             name={"accident.accidentDetails" as FieldName}
             label="Szczegółowy opis okoliczności miejsca i przyczyn wypadku"
             colSpan="col-span-12 md:col-span-4"
+          error={errors["accident.accidentDetails"]}
           />
           <TextField
             form={form}
@@ -155,14 +157,19 @@ export default function AccidentSection({ form, errors }: Props) {
                     <form.Field
                       name={"accident.machineUsageDetails" as FieldName}
                       children={(machineField: any) => (
-                        <textarea
-                          className="input-base min-h-[80px] resize-vertical"
-                          placeholder="Czy maszyna była sprawna, używana zgodnie z zasadami producenta, w jaki sposób"
-                          value={(machineField.state.value as string) ?? ""}
-                          onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
-                            machineField.setValue(event.target.value)
-                          }
-                        />
+                        <div className="flex flex-col gap-1">
+                          <textarea
+                            className="input-base min-h-[80px] resize-vertical"
+                            placeholder="Czy maszyna była sprawna, używana zgodnie z zasadami producenta, w jaki sposób"
+                            value={(machineField.state.value as string) ?? ""}
+                            onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+                              machineField.setValue(event.target.value)
+                            }
+                          />
+                          {errors["accident.machineUsageDetails"] ? (
+                            <p className="field-error">{errors["accident.machineUsageDetails"]}</p>
+                          ) : null}
+                        </div>
                       )}
                     />
 

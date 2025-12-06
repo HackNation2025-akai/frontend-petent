@@ -22,7 +22,9 @@ export default function Section({ title, description, children }: SectionProps) 
         {description ? <p className="text-sm text-slate-600">{description}</p> : null}
       </div>
 
-      <div className="border-t border-slate-100" />
+      <div className="px-4">
+        <div className="h-[3px] w-full bg-emerald-600" />
+      </div>
 
       <div className="px-6 py-5">{children}</div>
     </section>
