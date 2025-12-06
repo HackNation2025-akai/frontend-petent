@@ -17,6 +17,52 @@ const addressWithCountrySchema = addressSchema.extend({
   country: z.string().min(2, "Podaj nazwę państwa"),
 });
 
+// Schema dla etapu "basic" (dane osobowe + adresy)
+export const basicStepSchema = z.object({
+  pesel: z.string().regex(peselRegex, "PESEL powinien mieć 11 cyfr"),
+  docType: z.enum(["id_card", "passport", "other", ""], {
+    required_error: "Wybierz rodzaj dokumentu",
+  }),
+  docNumber: z.string().min(3, "Podaj numer dokumentu"),
+  firstName: z.string().min(2, "Imię jest wymagane"),
+  lastName: z.string().min(2, "Nazwisko jest wymagane"),
+  birthDate: z.string().min(4, "Data urodzenia jest wymagana"),
+  birthPlace: z.string().min(2, "Miejsce urodzenia jest wymagane"),
+  phone: z.string().regex(phoneRegex, "Telefon powinien mieć 7-15 cyfr"),
+  residence: addressWithCountrySchema.extend({
+    abroad: z.boolean(),
+  }),
+  correspondence: addressWithCountrySchema.extend({
+    mode: z.enum(["adres", "poste_restante", "skrytka_pocztowa", "przegrodka_pocztowa"]),
+    onBehalf: z.boolean(),
+  }),
+});
+
+// Schema dla etapu "basic" gdy abroad=true (dodatkowo lastResidence)
+export const basicStepAbroadSchema = basicStepSchema.extend({
+  lastResidence: addressSchema,
+});
+
+// Schema dla etapu "accident"
+export const accidentStepSchema = z.object({
+  accident: z.object({
+    date: z.string().min(4, "Data wypadku jest wymagana"),
+    place: z.string().min(2, "Podaj miejsce wypadku"),
+    plannedHoursStart: z.string().optional().default(""),
+    plannedHoursEnd: z.string().optional().default(""),
+    injuryTypes: z.string().min(2, "Opisz rodzaj urazów"),
+    accidentDetails: z.string().min(4, "Dodaj opis okoliczności"),
+    authority: z.string().optional().default(""),
+    firstAid: z.boolean(),
+    medicalFacility: z.string().optional().default(""),
+    machineRelated: z.boolean(),
+    machineUsageDetails: z.string().optional().default(""),
+    machineCertified: z.boolean(),
+    machineRegistered: z.boolean(),
+  }),
+});
+
+// Pełna schema (używana w summary)
 export const formSchema = z.object({
   pesel: z.string().regex(peselRegex, "PESEL powinien mieć 11 cyfr"),
   docType: z.enum(["id_card", "passport", "other", ""], {
@@ -31,7 +77,7 @@ export const formSchema = z.object({
   residence: addressWithCountrySchema.extend({
     abroad: z.boolean(),
   }),
-  lastResidence: addressSchema,
+  lastResidence: addressSchema.optional(),
   correspondence: addressWithCountrySchema.extend({
     mode: z.enum(["adres", "poste_restante", "skrytka_pocztowa", "przegrodka_pocztowa"]),
     onBehalf: z.boolean(),
@@ -53,15 +99,10 @@ export const formSchema = z.object({
   }),
 });
 
-export const validateFormValues = (value: FormValues) => {
-  const result = formSchema.safeParse(value);
+type Step = "basic" | "accident" | "summary";
 
-  if (result.success) {
-    return { success: true as const, errors: {} as Record<FieldName, string> };
-  }
-
+const parseErrors = (result: z.SafeParseError<unknown>) => {
   const errors: Record<FieldName, string> = {} as Record<FieldName, string>;
-
   for (const issue of result.error.issues) {
     const key = issue.path.join(".") as FieldName;
     if (!key) continue;
@@ -69,7 +110,47 @@ export const validateFormValues = (value: FormValues) => {
       errors[key] = issue.message;
     }
   }
+  return errors;
+};
 
-  return { success: false as const, errors };
+// Walidacja dla danego etapu
+export const validateStepValues = (
+  value: FormValues,
+  step: Step,
+  abroad: boolean = false,
+) => {
+  let schema: z.ZodTypeAny;
+
+  switch (step) {
+    case "basic":
+      schema = abroad ? basicStepAbroadSchema : basicStepSchema;
+      break;
+    case "accident":
+      schema = accidentStepSchema;
+      break;
+    case "summary":
+    default:
+      schema = formSchema;
+      break;
+  }
+
+  const result = schema.safeParse(value);
+
+  if (result.success) {
+    return { success: true as const, errors: {} as Record<FieldName, string> };
+  }
+
+  return { success: false as const, errors: parseErrors(result) };
+};
+
+// Walidacja pełnego formularza (backwards compatible)
+export const validateFormValues = (value: FormValues) => {
+  const result = formSchema.safeParse(value);
+
+  if (result.success) {
+    return { success: true as const, errors: {} as Record<FieldName, string> };
+  }
+
+  return { success: false as const, errors: parseErrors(result) };
 };
 

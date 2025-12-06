@@ -7,9 +7,13 @@ import { TextField } from "../TextField";
 type Props = {
   form: FormInstance;
   errors: Partial<Record<FieldName, string>>;
+  statuses?: Partial<Record<FieldName, "pending" | "success" | "objection">>;
+  hints?: Partial<Record<FieldName, string>>;
+  onFieldBlur?: (name: FieldName) => void;
+  [key: string]: unknown;
 };
 
-export default function PersonalSection({ form, errors }: Props) {
+export default function PersonalSection({ form, errors, statuses, hints, onFieldBlur }: Props) {
   return (
     <Section
       title="Dane osoby poszkodowanej"
@@ -17,7 +21,15 @@ export default function PersonalSection({ form, errors }: Props) {
     >
       <div className="section-grid">
         {personalFields.map((field) => (
-          <TextField key={field.name} form={form} error={errors[field.name]} {...field} />
+          <TextField
+            key={field.name}
+            form={form}
+            error={errors[field.name]}
+            status={statuses?.[field.name]}
+            hint={hints?.[field.name]}
+            onBlurValidate={onFieldBlur}
+            {...field}
+          />
         ))}
 
         <form.Field

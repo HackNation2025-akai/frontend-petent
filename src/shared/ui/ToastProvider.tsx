@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, useEffect, type PropsWithChildren } from "react";
+import { createContext, useContext, useMemo, useState, type PropsWithChildren } from "react";
 
 type Toast = { id: string; message: string; type?: "info" | "success" | "error" };
 
@@ -8,6 +8,7 @@ type ToastContextValue = {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = () => {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error("useToast must be used within ToastProvider");
