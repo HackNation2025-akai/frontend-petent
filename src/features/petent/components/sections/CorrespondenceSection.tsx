@@ -1,15 +1,15 @@
 import Section from "../Section";
-import type { FormValues } from "@/types/form";
-import { correspondenceFields } from "@/types/form";
-import { correspondenceModeOptions } from "@/types/formConfigs";
-import type { FormInstance } from "@/types/formInstance";
-import { TextField } from "./TextField";
+import { correspondenceFields } from "../../types/form.config";
+import { correspondenceModeOptions } from "../../types/form.config";
+import type { FormInstance } from "../../types/form-instance";
+import { TextField } from "../TextField";
 
 type Props = {
   form: FormInstance;
+  errors: Partial<Record<FieldName, string>>;
 };
 
-export default function CorrespondenceSection({ form }: Props) {
+export default function CorrespondenceSection({ form, errors }: Props) {
   return (
     <Section
       title="Adres do korespondencji osoby poszkodowanej"
@@ -46,7 +46,7 @@ export default function CorrespondenceSection({ form }: Props) {
 
       <div className="section-grid">
         {correspondenceFields.map((field) => (
-          <TextField key={field.name} form={form} {...field} />
+          <TextField key={field.name} form={form} error={errors[field.name]} {...field} />
         ))}
       </div>
 

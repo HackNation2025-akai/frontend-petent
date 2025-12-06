@@ -19,9 +19,7 @@ export default function Section({ title, description, children }: SectionProps) 
           </div>
           <div className="hidden h-10 w-px rounded-full bg-slate-200 md:block" />
         </div>
-        {description ? (
-          <p className="text-sm text-slate-600">{description}</p>
-        ) : null}
+        {description ? <p className="text-sm text-slate-600">{description}</p> : null}
       </div>
 
       <div className="border-t border-slate-100" />
@@ -30,3 +28,4 @@ export default function Section({ title, description, children }: SectionProps) 
     </section>
   );
 }
+

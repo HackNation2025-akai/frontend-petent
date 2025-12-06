@@ -1,23 +1,33 @@
+import type { FormEvent } from "react";
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import Section from "./Section";
-import type { FormValues } from "@/types/form";
-import type { FormInstance } from "@/types/formInstance";
-import PersonalSection from "./sections/PersonalSection";
-import ResidenceSection from "./sections/ResidenceSection";
-import LastResidenceSection from "./sections/LastResidenceSection";
-import CorrespondenceSection from "./sections/CorrespondenceSection";
-import AccidentSection from "./sections/AccidentSection";
-import { summaryRows } from "@/types/formConfigs";
+
+import Section from "../components/Section";
+import PersonalSection from "../components/sections/PersonalSection";
+import ResidenceSection from "../components/sections/ResidenceSection";
+import LastResidenceSection from "../components/sections/LastResidenceSection";
+import CorrespondenceSection from "../components/sections/CorrespondenceSection";
+import AccidentSection from "../components/sections/AccidentSection";
+import { summaryRows } from "../types/form.config";
+import type { FieldName, FormValues } from "../types/form";
+import type { FormInstance } from "../types/form-instance";
+import { validateFormValues } from "../validation/schema";
+import { logger } from "@/shared/lib/logger";
+import { useToast } from "@/shared/ui/ToastProvider";
+import { clearFormDraft, loadFormDraft, saveFormDraft } from "../hooks/useFormDraft";
 
 type Step = "basic" | "accident" | "summary";
 
-export default function Form() {
+export default function PetentFormPage() {
   const [step, setStep] = useState<Step>("basic");
   const [abroad, setAbroad] = useState<boolean>(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<FieldName, string>>>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const { addToast } = useToast();
+  const draft = typeof window !== "undefined" ? loadFormDraft() : null;
 
   const form: FormInstance = useForm({
-    defaultValues: {
+    defaultValues: draft ?? {
       pesel: "",
       docType: "",
       docNumber: "",
@@ -68,8 +78,10 @@ export default function Form() {
         machineRegistered: false,
       },
     } satisfies FormValues,
-    onSubmit: ({ value }) => {
-      console.log("Podsumowanie formularza:", value);
+    onSubmit: ({ value }: { value: FormValues }) => {
+      logger.info("Podsumowanie formularza:", value);
+      saveFormDraft(value);
+      clearFormDraft();
     },
   });
 
@@ -77,11 +89,45 @@ export default function Form() {
     step === "basic" ? "1 / 3" : step === "accident" ? "2 / 3" : "3 / 3";
 
   const handleNext = () => {
-    setStep((prev) => (prev === "basic" ? "accident" : "summary"));
+    setStep((prev: Step) => (prev === "basic" ? "accident" : "summary"));
   };
 
   const handlePrev = () => {
-    setStep((prev) => (prev === "summary" ? "accident" : "basic"));
+    setStep((prev: Step) => (prev === "summary" ? "accident" : "basic"));
+  };
+
+  const handleValidatedSubmit = (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    const validation = validateFormValues(form.state.values as FormValues);
+    if (!validation.success) {
+      setFormErrors(validation.errors);
+      addToast({ message: "Sprawdź wymagane pola formularza", type: "error" });
+      return;
+    }
+
+    setFormErrors({});
+    setIsSubmitting(true);
+
+    try {
+      if (step !== "summary") {
+        handleNext();
+        addToast({ message: "Zapisano krok formularza", type: "success" });
+        saveFormDraft(form.state.values as FormValues);
+        return;
+      }
+
+      form.handleSubmit();
+      addToast({ message: "Formularz zapisany (podgląd w konsoli)", type: "success" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraftClick = () => {
+    saveFormDraft(form.state.values as FormValues);
+    addToast({ message: "Szkic zapisany lokalnie", type: "success" });
   };
 
   return (
@@ -113,27 +159,17 @@ export default function Form() {
           </div>
         </header>
 
-        <form
-          className="mt-8 space-y-6"
-          onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            form.handleSubmit();
-            if (step !== "summary") {
-              handleNext();
-            }
-          }}
-        >
+        <form className="mt-8 space-y-6" onSubmit={handleValidatedSubmit}>
           {step === "basic" && (
             <>
-              <PersonalSection form={form} />
-              <ResidenceSection form={form} onAbroadChange={setAbroad} />
-              {abroad ? <LastResidenceSection form={form} /> : null}
-              <CorrespondenceSection form={form} />
+              <PersonalSection form={form} errors={formErrors} />
+              <ResidenceSection form={form} errors={formErrors} onAbroadChange={setAbroad} />
+              {abroad ? <LastResidenceSection form={form} errors={formErrors} /> : null}
+              <CorrespondenceSection form={form} errors={formErrors} />
             </>
           )}
 
-          {step === "accident" && <AccidentSection form={form} />}
+          {step === "accident" && <AccidentSection form={form} errors={formErrors} />}
 
           {step === "summary" && (
             <Section
@@ -165,13 +201,15 @@ export default function Form() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300"
+                    className="btn btn-ghost shadow-sm"
+                    onClick={() => logger.info("Stub drukowania – w przygotowaniu")}
                   >
                     Drukuj (wkrótce)
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300"
+                    className="btn btn-ghost shadow-sm"
+                    onClick={() => logger.info("Stub wysyłki – w przygotowaniu")}
                   >
                     Wyślij (wkrótce)
                   </button>
@@ -181,11 +219,14 @@ export default function Form() {
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-6 py-4 shadow-sm ring-1 ring-slate-200">
+              <button type="button" onClick={handleSaveDraftClick} className="btn btn-ghost shadow-sm">
+                Zapisz szkic
+              </button>
             <button
               type="button"
-              disabled={step === "basic"}
+                disabled={step === "basic" || isSubmitting}
               onClick={handlePrev}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn btn-ghost shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
               Wróć
             </button>
@@ -193,15 +234,17 @@ export default function Form() {
             {step !== "summary" ? (
               <button
                 type="button"
-                onClick={handleNext}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                  onClick={handleValidatedSubmit}
+                  disabled={isSubmitting}
+                  className="btn btn-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
               >
                 {step === "basic" ? "Przejdź do sekcji wypadku" : "Przejdź do podsumowania"}
               </button>
             ) : (
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                  disabled={isSubmitting}
+                  className="btn btn-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
               >
                 Zakończ i zapisz w konsoli
               </button>
@@ -212,3 +255,4 @@ export default function Form() {
     </main>
   );
 }
+

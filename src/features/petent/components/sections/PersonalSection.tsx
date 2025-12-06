@@ -1,14 +1,15 @@
 import Section from "../Section";
-import type { FieldName, FormValues } from "@/types/form";
-import type { FormInstance } from "@/types/formInstance";
-import { docTypeOptions, personalFields } from "@/types/formConfigs";
-import { TextField } from "./TextField";
+import type { FieldName, FormValues } from "../../types/form";
+import type { FormInstance } from "../../types/form-instance";
+import { docTypeOptions, personalFields } from "../../types/form.config";
+import { TextField } from "../TextField";
 
 type Props = {
   form: FormInstance;
+  errors: Partial<Record<FieldName, string>>;
 };
 
-export default function PersonalSection({ form }: Props) {
+export default function PersonalSection({ form, errors }: Props) {
   return (
     <Section
       title="Dane osoby poszkodowanej"
@@ -16,7 +17,7 @@ export default function PersonalSection({ form }: Props) {
     >
       <div className="section-grid">
         {personalFields.map((field) => (
-          <TextField key={field.name} form={form} {...field} />
+          <TextField key={field.name} form={form} error={errors[field.name]} {...field} />
         ))}
 
         <form.Field
@@ -43,6 +44,7 @@ export default function PersonalSection({ form }: Props) {
                   </option>
                 ))}
               </select>
+              {errors.docType ? <p className="field-error">{errors.docType}</p> : null}
             </div>
           )}
         />
