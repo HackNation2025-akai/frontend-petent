@@ -1,4 +1,5 @@
 import type { FieldConfig, FormValues } from "./form";
+import { normalizePesel, normalizePhone, normalizePostalCode } from "@/shared/lib/formatters";
 
 const personalFields: FieldConfig[] = [
   { name: "firstName", label: "Imię", colSpan: "col-span-12 md:col-span-3" },
@@ -14,7 +15,7 @@ const personalFields: FieldConfig[] = [
     label: "Miejsce urodzenia",
     colSpan: "col-span-12 md:col-span-3",
   },
-  { name: "pesel", label: "PESEL", colSpan: "col-span-12 md:col-span-3" },
+  { name: "pesel", label: "PESEL", colSpan: "col-span-12 md:col-span-3", normalize: normalizePesel },
   {
     name: "docNumber",
     label: "Seria i numer dokumentu",
@@ -25,6 +26,7 @@ const personalFields: FieldConfig[] = [
     label: "Numer telefonu",
     type: "tel",
     colSpan: "col-span-12 md:col-span-3",
+    normalize: normalizePhone,
   },
 ];
 
@@ -48,6 +50,7 @@ const residenceFields: FieldConfig[] = [
     name: "residence.postalCode",
     label: "Kod pocztowy",
     colSpan: "col-span-6 md:col-span-3",
+    normalize: normalizePostalCode,
   },
   {
     name: "residence.city",
@@ -82,6 +85,7 @@ const lastResidenceFields: FieldConfig[] = [
     name: "lastResidence.postalCode",
     label: "Kod pocztowy",
     colSpan: "col-span-6 md:col-span-3",
+    normalize: normalizePostalCode,
   },
   {
     name: "lastResidence.city",
@@ -110,6 +114,7 @@ const correspondenceFields: FieldConfig[] = [
     name: "correspondence.postalCode",
     label: "Kod pocztowy",
     colSpan: "col-span-6 md:col-span-3",
+    normalize: normalizePostalCode,
   },
   {
     name: "correspondence.city",

@@ -9,17 +9,25 @@ import LastResidenceSection from "../components/sections/LastResidenceSection";
 import CorrespondenceSection from "../components/sections/CorrespondenceSection";
 import AccidentSection from "../components/sections/AccidentSection";
 import { summaryRows } from "../types/form.config";
-import type { FormValues } from "../types/form";
+import type { FieldName, FormValues } from "../types/form";
 import type { FormInstance } from "../types/form-instance";
+import { validateFormValues } from "../validation/schema";
+import { logger } from "@/shared/lib/logger";
+import { useToast } from "@/shared/ui/ToastProvider";
+import { clearFormDraft, loadFormDraft, saveFormDraft } from "../hooks/useFormDraft";
 
 type Step = "basic" | "accident" | "summary";
 
 export default function PetentFormPage() {
   const [step, setStep] = useState<Step>("basic");
   const [abroad, setAbroad] = useState<boolean>(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<FieldName, string>>>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const { addToast } = useToast();
+  const draft = typeof window !== "undefined" ? loadFormDraft() : null;
 
   const form: FormInstance = useForm({
-    defaultValues: {
+    defaultValues: draft ?? {
       pesel: "",
       docType: "",
       docNumber: "",
@@ -71,7 +79,9 @@ export default function PetentFormPage() {
       },
     } satisfies FormValues,
     onSubmit: ({ value }: { value: FormValues }) => {
-      console.log("Podsumowanie formularza:", value);
+      logger.info("Podsumowanie formularza:", value);
+      saveFormDraft(value);
+      clearFormDraft();
     },
   });
 
@@ -84,6 +94,40 @@ export default function PetentFormPage() {
 
   const handlePrev = () => {
     setStep((prev: Step) => (prev === "summary" ? "accident" : "basic"));
+  };
+
+  const handleValidatedSubmit = (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    const validation = validateFormValues(form.state.values as FormValues);
+    if (!validation.success) {
+      setFormErrors(validation.errors);
+      addToast({ message: "Sprawdź wymagane pola formularza", type: "error" });
+      return;
+    }
+
+    setFormErrors({});
+    setIsSubmitting(true);
+
+    try {
+      if (step !== "summary") {
+        handleNext();
+        addToast({ message: "Zapisano krok formularza", type: "success" });
+        saveFormDraft(form.state.values as FormValues);
+        return;
+      }
+
+      form.handleSubmit();
+      addToast({ message: "Formularz zapisany (podgląd w konsoli)", type: "success" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraftClick = () => {
+    saveFormDraft(form.state.values as FormValues);
+    addToast({ message: "Szkic zapisany lokalnie", type: "success" });
   };
 
   return (
@@ -115,27 +159,17 @@ export default function PetentFormPage() {
           </div>
         </header>
 
-        <form
-          className="mt-8 space-y-6"
-          onSubmit={(event: FormEvent<HTMLFormElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-            form.handleSubmit();
-            if (step !== "summary") {
-              handleNext();
-            }
-          }}
-        >
+        <form className="mt-8 space-y-6" onSubmit={handleValidatedSubmit}>
           {step === "basic" && (
             <>
-              <PersonalSection form={form} />
-              <ResidenceSection form={form} onAbroadChange={setAbroad} />
-              {abroad ? <LastResidenceSection form={form} /> : null}
-              <CorrespondenceSection form={form} />
+              <PersonalSection form={form} errors={formErrors} />
+              <ResidenceSection form={form} errors={formErrors} onAbroadChange={setAbroad} />
+              {abroad ? <LastResidenceSection form={form} errors={formErrors} /> : null}
+              <CorrespondenceSection form={form} errors={formErrors} />
             </>
           )}
 
-          {step === "accident" && <AccidentSection form={form} />}
+          {step === "accident" && <AccidentSection form={form} errors={formErrors} />}
 
           {step === "summary" && (
             <Section
@@ -167,13 +201,15 @@ export default function PetentFormPage() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300"
+                    className="btn btn-ghost shadow-sm"
+                    onClick={() => logger.info("Stub drukowania – w przygotowaniu")}
                   >
                     Drukuj (wkrótce)
                   </button>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300"
+                    className="btn btn-ghost shadow-sm"
+                    onClick={() => logger.info("Stub wysyłki – w przygotowaniu")}
                   >
                     Wyślij (wkrótce)
                   </button>
@@ -183,11 +219,14 @@ export default function PetentFormPage() {
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-6 py-4 shadow-sm ring-1 ring-slate-200">
+              <button type="button" onClick={handleSaveDraftClick} className="btn btn-ghost shadow-sm">
+                Zapisz szkic
+              </button>
             <button
               type="button"
-              disabled={step === "basic"}
+                disabled={step === "basic" || isSubmitting}
               onClick={handlePrev}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn btn-ghost shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
             >
               Wróć
             </button>
@@ -195,15 +234,17 @@ export default function PetentFormPage() {
             {step !== "summary" ? (
               <button
                 type="button"
-                onClick={handleNext}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                  onClick={handleValidatedSubmit}
+                  disabled={isSubmitting}
+                  className="btn btn-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
               >
                 {step === "basic" ? "Przejdź do sekcji wypadku" : "Przejdź do podsumowania"}
               </button>
             ) : (
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                  disabled={isSubmitting}
+                  className="btn btn-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
               >
                 Zakończ i zapisz w konsoli
               </button>

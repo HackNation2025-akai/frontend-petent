@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import Section from "../Section";
 import type { FieldName } from "../../types/form";
 import type { FormInstance } from "../../types/form-instance";
@@ -5,9 +6,10 @@ import { TextField } from "../TextField";
 
 type Props = {
   form: FormInstance;
+  errors: Partial<Record<FieldName, string>>;
 };
 
-export default function AccidentSection({ form }: Props) {
+export default function AccidentSection({ form, errors }: Props) {
   return (
     <Section
       title="Czas i miejsce"
@@ -20,12 +22,14 @@ export default function AccidentSection({ form }: Props) {
           label="Data wypadku"
           type="date"
           colSpan="col-span-12 md:col-span-4"
+          error={errors["accident.date"]}
         />
         <TextField
           form={form}
           name={"accident.place" as FieldName}
           label="Miejsce wypadku"
           colSpan="col-span-12 md:col-span-4"
+          error={errors["accident.place"]}
         />
         <div className="col-span-12 md:col-span-4 flex flex-col gap-2">
           <label className="text-sm font-semibold text-slate-800">
@@ -34,24 +38,38 @@ export default function AccidentSection({ form }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <form.Field
               name={"accident.plannedHoursStart" as FieldName}
-              children={(field) => (
-                <input
-                  className="input-base"
-                  placeholder="Początek"
-                  value={(field.state.value as string) ?? ""}
-                  onChange={(event) => field.setValue(event.target.value)}
-                />
+              children={(field: any) => (
+                <div className="flex flex-col gap-1">
+                  <input
+                    className="input-base"
+                    placeholder="Początek"
+                    value={(field.state.value as string) ?? ""}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      field.setValue(event.target.value)
+                    }
+                  />
+                  {errors["accident.plannedHoursStart"] ? (
+                    <p className="field-error">{errors["accident.plannedHoursStart"]}</p>
+                  ) : null}
+                </div>
               )}
             />
             <form.Field
               name={"accident.plannedHoursEnd" as FieldName}
-              children={(field) => (
-                <input
-                  className="input-base"
-                  placeholder="Koniec"
-                  value={(field.state.value as string) ?? ""}
-                  onChange={(event) => field.setValue(event.target.value)}
-                />
+              children={(field: any) => (
+                <div className="flex flex-col gap-1">
+                  <input
+                    className="input-base"
+                    placeholder="Koniec"
+                    value={(field.state.value as string) ?? ""}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      field.setValue(event.target.value)
+                    }
+                  />
+                  {errors["accident.plannedHoursEnd"] ? (
+                    <p className="field-error">{errors["accident.plannedHoursEnd"]}</p>
+                  ) : null}
+                </div>
               )}
             />
           </div>
@@ -87,14 +105,16 @@ export default function AccidentSection({ form }: Props) {
         <div className="flex flex-col gap-3">
           <form.Field
             name={"accident.firstAid" as FieldName}
-            children={(field) => (
+            children={(field: any) => (
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                     checked={Boolean(field.state.value)}
-                    onChange={(event) => field.setValue(event.target.checked)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      field.setValue(event.target.checked)
+                    }
                   />
                   Udzielona pierwsza pomoc medyczna
                 </label>
@@ -104,6 +124,7 @@ export default function AccidentSection({ form }: Props) {
                     name={"accident.medicalFacility" as FieldName}
                     label="Placówka"
                     colSpan="col-span-12"
+                    error={errors["accident.medicalFacility"]}
                   />
                 ) : null}
               </div>
@@ -112,14 +133,16 @@ export default function AccidentSection({ form }: Props) {
 
           <form.Field
             name={"accident.machineRelated" as FieldName}
-            children={(field) => (
+            children={(field: any) => (
               <div className="flex flex-col gap-3">
                 <label className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                     checked={Boolean(field.state.value)}
-                    onChange={(event) => field.setValue(event.target.checked)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      field.setValue(event.target.checked)
+                    }
                   />
                   Wypadek powstał podczas obsługi maszyn, urządzeń
                 </label>
@@ -131,12 +154,12 @@ export default function AccidentSection({ form }: Props) {
                     </h4>
                     <form.Field
                       name={"accident.machineUsageDetails" as FieldName}
-                      children={(machineField) => (
+                      children={(machineField: any) => (
                         <textarea
                           className="input-base min-h-[80px] resize-vertical"
                           placeholder="Czy maszyna była sprawna, używana zgodnie z zasadami producenta, w jaki sposób"
                           value={(machineField.state.value as string) ?? ""}
-                          onChange={(event) =>
+                          onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                             machineField.setValue(event.target.value)
                           }
                         />
@@ -146,13 +169,13 @@ export default function AccidentSection({ form }: Props) {
                     <div className="flex flex-wrap gap-4 text-sm text-slate-800">
                       <form.Field
                         name={"accident.machineCertified" as FieldName}
-                        children={(certField) => (
+                        children={(certField: any) => (
                           <label className="flex items-center gap-2">
                             <input
                               type="checkbox"
                               className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                               checked={Boolean(certField.state.value)}
-                              onChange={(event) =>
+                              onChange={(event: ChangeEvent<HTMLInputElement>) =>
                                 certField.setValue(event.target.checked)
                               }
                             />
@@ -162,13 +185,13 @@ export default function AccidentSection({ form }: Props) {
                       />
                       <form.Field
                         name={"accident.machineRegistered" as FieldName}
-                        children={(regField) => (
+                        children={(regField: any) => (
                           <label className="flex items-center gap-2">
                             <input
                               type="checkbox"
                               className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                               checked={Boolean(regField.state.value)}
-                              onChange={(event) =>
+                              onChange={(event: ChangeEvent<HTMLInputElement>) =>
                                 regField.setValue(event.target.checked)
                               }
                             />

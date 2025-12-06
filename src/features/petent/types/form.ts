@@ -83,5 +83,6 @@ export type FieldConfig = {
   type?: "text" | "date" | "tel";
   colSpan?: string;
   placeholder?: string;
+  normalize?: (value: string) => string;
 };
 

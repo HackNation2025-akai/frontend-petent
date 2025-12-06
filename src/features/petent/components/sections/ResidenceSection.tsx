@@ -6,9 +6,10 @@ import { TextField } from "../TextField";
 type Props = {
   form: FormInstance;
   onAbroadChange?: (value: boolean) => void;
+  errors: Partial<Record<FieldName, string>>;
 };
 
-export default function ResidenceSection({ form, onAbroadChange }: Props) {
+export default function ResidenceSection({ form, onAbroadChange, errors }: Props) {
   return (
     <Section
       title="Adres zamieszkania osoby poszkodowanej"
@@ -16,7 +17,7 @@ export default function ResidenceSection({ form, onAbroadChange }: Props) {
     >
       <div className="section-grid">
         {residenceFields.map((field) => (
-          <TextField key={field.name} form={form} {...field} />
+          <TextField key={field.name} form={form} error={errors[field.name]} {...field} />
         ))}
       </div>
 
