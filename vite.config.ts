@@ -6,8 +6,8 @@ import tsconfigPaths from "vite-tsconfig-paths";
 // https://vite.dev/config/
 export default defineConfig({
   server: {
-    port: 3000,
-    host: "localhost",
+    host: "0.0.0.0",
+    port: 5173,
   },
   plugins: [
     react({
@@ -18,4 +18,8 @@ export default defineConfig({
     tailwindcss(),
     tsconfigPaths(),
   ],
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+  },
 });
