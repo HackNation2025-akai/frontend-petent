@@ -1,0 +1,49 @@
+import Section from "../Section";
+import type { FormValues } from "@/types/form";
+import { residenceFields } from "@/types/form";
+import type { FormInstance } from "@/types/formInstance";
+import { TextField } from "./TextField";
+
+type Props = {
+  form: FormInstance;
+  onAbroadChange?: (value: boolean) => void;
+};
+
+export default function ResidenceSection({ form, onAbroadChange }: Props) {
+  return (
+    <Section
+      title="Adres zamieszkania osoby poszkodowanej"
+      description="Wpisz adres aktualnego miejsca zamieszkania."
+    >
+      <div className="section-grid">
+        {residenceFields.map((field) => (
+          <TextField key={field.name} form={form} {...field} />
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <form.Field
+          name="residence.abroad"
+          children={(field) => (
+            <label className="flex items-center gap-2 font-medium text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                checked={Boolean(field.state.value)}
+                onChange={(event) => {
+                  field.setValue(event.target.checked);
+                  onAbroadChange?.(event.target.checked);
+                }}
+              />
+              Nie mieszkam w Polsce
+            </label>
+          )}
+        />
+        <span className="text-xs text-slate-500">
+          Jeśli zaznaczysz, uzupełnij pole z nazwą państwa.
+        </span>
+      </div>
+    </Section>
+  );
+}
+
