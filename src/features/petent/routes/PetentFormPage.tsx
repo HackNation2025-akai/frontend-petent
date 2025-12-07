@@ -229,12 +229,34 @@ export default function PetentFormPage() {
       )) as RemoteValidationResult & LocalValidationResult;
       setFieldStatuses((prev) => ({ ...prev, ...(validation.fieldStatuses || {}) }));
       setFieldHints((prev) => ({ ...prev, ...(validation.fieldHints || {}) }));
+      // Zaktualizuj błędy formularza na podstawie statusów i nowych błędów:
+      // - dla pól z status "success" usuń poprzedni błąd,
+      // - dla pól z status "objection" ustaw nowy komunikat.
+      setFormErrors((prev) => {
+        const next = { ...prev } as Record<FieldName, string>;
+
+        // Usuń błędy dla wszystkich pól, które właśnie walidowaliśmy
+        Object.entries(validation.fieldStatuses || {}).forEach(([name, status]) => {
+          const key = name as FieldName;
+          if (status === "success") {
+            delete next[key];
+          }
+        });
+
+        // Ustaw błędy dla pól z objection
+        Object.entries(validation.fieldErrors || {}).forEach(([name, message]) => {
+          const key = name as FieldName;
+          next[key] = message;
+        });
+
+        return next;
+      });
+
       if (validation.fieldErrors && Object.keys(validation.fieldErrors).length) {
         logger.error("LLM validation objections", {
           fields: Object.keys(validation.fieldErrors),
           details: validation.fieldErrors,
         });
-        setFormErrors((prev) => ({ ...prev, ...validation.fieldErrors }));
         addToast({
           message: "LLM zgłosił uwagi — popraw pola z komunikatami.",
           type: "error",
@@ -268,20 +290,18 @@ export default function PetentFormPage() {
     event?.preventDefault();
     event?.stopPropagation();
 
-    // Walidacja etapowa - tylko pola dla bieżącego etapu
-    const validation = step === "summary"
-      ? validateFormValues(form.state.values as FormValues)
-      : validateStepValues(form.state.values as FormValues, step, abroad);
-
-    if (!validation.success) {
-      setFormErrors(validation.errors);
-      // Loguj szczegóły błędów w konsoli
-      logger.error("Local validation errors", validation.errors);
-      addToast({ message: "Sprawdź wymagane pola formularza", type: "error" });
-      return;
+    // Na krokach pośrednich zachowujemy lokalną walidację,
+    // na podsumowaniu zapis/druk nie jest blokowany.
+    if (step !== "summary") {
+      const validation = validateStepValues(form.state.values as FormValues, step, abroad);
+      if (!validation.success) {
+        setFormErrors(validation.errors);
+        console.error("Local validation errors", validation.errors);
+        addToast({ message: "Sprawdź wymagane pola formularza", type: "error" });
+        return;
+      }
+      setFormErrors({});
     }
-
-    setFormErrors({});
     setIsSubmitting(true);
 
     try {
@@ -297,10 +317,7 @@ export default function PetentFormPage() {
         saveFormDraft(form.state.values as FormValues);
         return;
       }
-
-      const remoteOk = await runRemoteValidation();
-      if (!remoteOk) return;
-
+      // Na podsumowaniu pomijamy dodatkową walidację LLM
       const payload = mapFormToBackendPayload(form.state.values as FormValues);
       await submitForm(session.sessionId, { payload, source: "raw", comment: "frontend" });
       await refreshHistory();
@@ -553,7 +570,7 @@ export default function PetentFormPage() {
             <button
               type="button"
               onClick={handleFillSample}
-              className="btn shadow-sm bg-blue-600 text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="btn shadow-sm bg-[#007834] text-white hover:bg-[#00632b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#007834] focus-visible:ring-offset-2"
             >
               Wypełnij danymi testowymi
             </button>
@@ -778,14 +795,25 @@ export default function PetentFormPage() {
                               <p className="text-xs text-slate-600">Komentarz: {v.comment}</p>
                             ) : null}
                           </div>
-                          <a
-                            className="text-sm font-semibold text-emerald-700 hover:underline"
-                            href={getPdfUrl(historyData.session_id, v.version)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            PDF
-                          </a>
+                          <div className="flex flex-wrap gap-2 text-xs md:text-sm">
+                            <a
+                              className="font-semibold text-emerald-700 hover:underline"
+                              href={getPdfUrl(historyData.session_id, v.version)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              EWYP
+                            </a>
+                            <span className="text-slate-400">•</span>
+                            <a
+                              className="font-semibold text-emerald-700 hover:underline"
+                              href={`${getPdfUrl(historyData.session_id, v.version)}-notification`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              zawiadomienie o wypadku
+                            </a>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -822,7 +850,7 @@ export default function PetentFormPage() {
                   disabled={validationPending}
                   className="btn btn-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-70"
               >
-                Zakończ i zapisz na backendzie
+                Zakończ i zapisz
               </button>
             )}
           </div>
